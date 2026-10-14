@@ -1,0 +1,67 @@
+# ==============================================================================
+# SDN DDoS Detection and Automatic Mitigation System Configuration
+# ==============================================================================
+
+controller:
+  host: "0.0.0.0"
+  port: 6653
+  openflow_version: "OpenFlow13"
+  stat_polling_interval: 3.0       # seconds between OFP flow stats requests
+  switch_dpids: [1, 2, 3, 4]
+
+mitigation:
+  hard_timeout: 30                 # duration (seconds) before DROP rule expires
+  idle_timeout: 10                 # flow idle timeout
+  rule_priority: 65535             # highest priority for DROP rules
+  auto_unblock: true               # controller automatically cleans block state
+  whitelist_ips:
+    - "10.0.0.254"
+    - "127.0.0.1"
+    - "10.0.0.6"                   # verified benign core host
+
+detection:
+  use_ml: true
+  model_path: "ml/models/model.pkl"
+  scaler_path: "ml/models/scaler.pkl"
+  metadata_path: "ml/models/model_metadata.json"
+  
+  # Threshold-based fallback if ML model is unavailable
+  thresholds:
+    max_packet_rate: 1200.0        # packets per second threshold
+    max_byte_rate: 1500000.0       # bytes per second (~1.5 MB/s)
+    min_src_entropy: 0.85          # low entropy indicates concentrated/flooding source
+    max_flows_per_dest: 40         # abnormal fan-in to victim host
+    syn_ratio_threshold: 0.70      # high SYN without ACK
+    udp_ratio_threshold: 0.70      # abnormal UDP volume
+    icmp_ratio_threshold: 0.60     # abnormal ICMP ping volume
+
+ml:
+  dataset_dir: "ml/dataset"
+  dataset_path: "ml/dataset/flow_dataset.csv"
+  models_dir: "ml/models"
+  results_dir: "ml/results"
+  random_state: 42
+  test_size: 0.25
+  features:
+    - packet_rate
+    - byte_rate
+    - packet_count_per_flow
+    - byte_count_per_flow
+    - avg_duration_sec
+    - src_ip_entropy
+    - dst_ip_entropy
+    - unique_src_per_dst
+    - tcp_ratio
+    - udp_ratio
+    - icmp_ratio
+
+dashboard:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+  history_limit: 100
+  refresh_interval_ms: 2000
+
+logging:
+  level: "INFO"
+  log_file: "logs/sdn_ddos.log"

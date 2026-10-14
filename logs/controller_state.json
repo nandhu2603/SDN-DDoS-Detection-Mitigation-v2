@@ -1,0 +1,47 @@
+{
+  "status": "NORMAL",
+  "polling_interval": 3.0,
+  "ml_active": true,
+  "blocked_count": 0,
+  "blocked_hosts": [],
+  "latest_features": {},
+  "traffic_history": [],
+  "recent_alerts": [
+    {
+      "timestamp": "2026-10-14 15:02:20",
+      "severity": "CRITICAL",
+      "title": "DDoS Attack Mitigated",
+      "message": "Attack vector 'TCP SYN Flood' detected (5000 pkts). Installed DROP rule for attacker 10.0.0.1 targeting 10.0.0.4.",
+      "attacker_ip": "10.0.0.1",
+      "target_ip": "10.0.0.4"
+    },
+    {
+      "timestamp": "2026-10-14 15:02:20",
+      "severity": "INFO",
+      "title": "Manual Unblock",
+      "message": "Administrator unblocked 10.0.0.1.",
+      "attacker_ip": "10.0.0.1",
+      "target_ip": "N/A"
+    },
+    {
+      "timestamp": "2026-10-14 15:02:20",
+      "severity": "CRITICAL",
+      "title": "DDoS Attack Mitigated",
+      "message": "Attack vector 'TCP SYN Flood' detected (5000 pkts). Installed DROP rule for attacker 10.0.0.1 targeting 10.0.0.4.",
+      "attacker_ip": "10.0.0.1",
+      "target_ip": "10.0.0.4"
+    },
+    {
+      "timestamp": "2026-10-14 15:02:20",
+      "severity": "INFO",
+      "title": "Host Unblocked",
+      "message": "Hard timeout expired. IP 10.0.0.1 unblocked.",
+      "attacker_ip": "10.0.0.1",
+      "target_ip": "N/A"
+    }
+  ],
+  "active_switches": [
+    1
+  ],
+  "last_updated": "2026-10-14 15:02:20"
+}

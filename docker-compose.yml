@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  sdn-lab:
+    build: .
+    container_name: sdn-ddos-lab
+    privileged: true
+    network_mode: host
+    volumes:
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "5000:5000"
+      - "6653:6653"
+    stdin_open: true
+    tty: true
+    command: /bin/bash -c "service openvswitch-switch start && ./run_all.sh"

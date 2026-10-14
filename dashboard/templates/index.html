@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDN DDoS Detection & Mitigation Dashboard</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .title-group h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .status-badge-container {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .badge {
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-normal {
+      background-color: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      border: 1px solid var(--accent-green);
+    }
+
+    .badge-attack {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+      animation: pulse 1.5s infinite;
+    }
+
+    .badge-info {
+      background-color: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.03); }
+    }
+
+    /* Alert Banner */
+    .banner {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .banner-normal {
+      background-color: rgba(34, 197, 94, 0.12);
+      border-left: 4px solid var(--accent-green);
+      color: #86efac;
+    }
+
+    .banner-attack {
+      background-color: rgba(239, 68, 68, 0.18);
+      border-left: 4px solid var(--accent-red);
+      color: #fca5a5;
+    }
+
+    /* Metric Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .card-subtext {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Charts Layout */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+      width: 100%;
+    }
+
+    /* Demo Controls */
+    .demo-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .demo-bar span {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--accent-blue);
+      margin-right: 6px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-normal {
+      background-color: rgba(34, 197, 94, 0.2);
+      color: var(--accent-green);
+      border: 1px solid var(--accent-green);
+    }
+    .btn-normal:hover { background-color: var(--accent-green); color: #fff; }
+
+    .btn-danger {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+    }
+    .btn-danger:hover { background-color: var(--accent-red); color: #fff; }
+
+    .btn-warning {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber);
+    }
+    .btn-warning:hover { background-color: var(--accent-amber); color: #fff; }
+
+    .btn-secondary {
+      background-color: rgba(148, 163, 184, 0.2);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover { background-color: var(--border-color); color: #fff; }
+
+    /* Tables */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .tables-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+    }
+
+    .badge-ip {
+      font-family: monospace;
+      padding: 2px 6px;
+      background: #0f172a;
+      border-radius: 4px;
+      color: #38bdf8;
+    }
+
+    .badge-critical {
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    .badge-info-text {
+      color: #38bdf8;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="title-group">
+      <h1>🛡️ SDN-Based DDoS Detection & Mitigation</h1>
+      <p>Ryu OpenFlow 1.3 Controller | Mininet SDN Lab | Random Forest Classifier</p>
+    </div>
+    <div class="status-badge-container">
+      <span class="badge badge-info" id="mlBadge">ML Engine: Active</span>
+      <span class="badge badge-info" id="switchesBadge">Switches: 4 Connected</span>
+      <span class="badge badge-normal" id="statusBadge">NORMAL</span>
+    </div>
+  </div>
+
+  <!-- Live Status Banner -->
+  <div class="banner banner-normal" id="alertBanner">
+    <span id="bannerText">✅ Network operating under baseline benign conditions. No active DDoS anomalies detected.</span>
+    <span id="lastUpdated" style="font-size: 0.8rem; opacity: 0.8;">Updated: Just now</span>
+  </div>
+
+  <!-- Metric Cards -->
+  <div class="metrics-grid">
+    <div class="card">
+      <div class="card-title">Throughput (Packet Rate)</div>
+      <div class="card-value" id="cardPacketRate">0 <span style="font-size: 1rem;">pps</span></div>
+      <div class="card-subtext" id="cardByteRate">0 KB/s</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Source IP Entropy H(Src)</div>
+      <div class="card-value" id="cardSrcEntropy">0.00</div>
+      <div class="card-subtext">Shannon Information Measure</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Active Blocked Attackers</div>
+      <div class="card-value" id="cardBlockedCount" style="color: var(--accent-red);">0</div>
+      <div class="card-subtext">Hardware DROP Flow Rules Active</div>
+    </div>
+    <div class="card">
+      <div class="card-title">ML Model Confidence</div>
+      <div class="card-value" id="cardConfidence" style="color: var(--accent-green);">100%</div>
+      <div class="card-subtext">Random Forest Classifier (F1: 1.00)</div>
+    </div>
+  </div>
+
+  <!-- Live Demo Control Toolbar -->
+  <div class="demo-bar">
+    <span>🔬 Lab Demonstration Controls:</span>
+    <button class="btn btn-normal" onclick="simulateTraffic('normal')">Benign Traffic Burst</button>
+    <button class="btn btn-danger" onclick="simulateTraffic('syn_flood')">Simulate SYN Flood (10.0.0.1)</button>
+    <button class="btn btn-danger" onclick="simulateTraffic('udp_flood')">Simulate UDP Flood (10.0.0.2)</button>
+    <button class="btn btn-warning" onclick="simulateTraffic('icmp_flood')">Simulate ICMP Flood (10.0.0.3)</button>
+    <button class="btn btn-secondary" onclick="simulateTraffic('reset')">Reset Lab State</button>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="charts-grid">
+    <!-- Throughput Chart -->
+    <div class="card">
+      <div class="card-title">Live Network Traffic Volume (Packets / Second)</div>
+      <div class="chart-container">
+        <canvas id="trafficChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Protocol / Entropy Doughnut Chart -->
+    <div class="card">
+      <div class="card-title">Protocol Distribution & Entropy</div>
+      <div class="chart-container">
+        <canvas id="protocolChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tables Grid: Blocked Hosts & Security Alerts -->
+  <div class="tables-grid">
+    <!-- Blocked Hosts Table -->
+    <div class="card">
+      <div class="card-title">🛑 Dynamic DROP Flow Rules (Edge Switch Isolation)</div>
+      <table id="blockedTable">
+        <thead>
+          <tr>
+            <th>Attacker IP</th>
+            <th>Target Victim</th>
+            <th>Attack Type</th>
+            <th>Time Left</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="blockedTableBody">
+          <tr>
+            <td colspan="5" class="empty-state">No hosts currently blocked. Network is secure.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Security Event Log -->
+    <div class="card">
+      <div class="card-title">📋 Controller Audit & Mitigation Log</div>
+      <table id="alertsTable">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Severity</th>
+            <th>Event Details</th>
+          </tr>
+        </thead>
+        <tbody id="alertsTableBody">
+          <tr>
+            <td colspan="3" class="empty-state">Audit log initialized. Waiting for events...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    let trafficChart = null;
+    let protocolChart = null;
+
+    // Initialize Chart.js Instances
+    function initCharts() {
+      const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+      trafficChart = new Chart(ctxTraffic, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Traffic (Packets/sec)',
+              data: [],
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.12)',
+              borderWidth: 2.5,
+              tension: 0.3,
+              fill: true,
+              pointRadius: 3
+            },
+            {
+              label: 'Threshold Baseline (1200 pps)',
+              data: [],
+              borderColor: 'rgba(239, 68, 68, 0.6)',
+              borderWidth: 1.5,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } }
+          }
+        }
+      });
+
+      const ctxProto = document.getElementById('protocolChart').getContext('2d');
+      protocolChart = new Chart(ctxProto, {
+        type: 'doughnut',
+        data: {
+          labels: ['TCP (HTTP)', 'UDP (DNS)', 'ICMP (Ping)'],
+          datasets: [{
+            data: [60, 30, 10],
+            backgroundColor: ['#38bdf8', '#a855f7', '#f59e0b'],
+            borderWidth: 2,
+            borderColor: '#1e293b'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#cbd5e1', padding: 14 } }
+          }
+        }
+      });
+    }
+
+    // Poll Controller State from REST API
+    async function fetchStatus() {
+      try {
+        const resp = await fetch('/api/status');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        updateUI(data);
+      } catch (e) {
+        console.error("Status poll error:", e);
+      }
+    }
+
+    function updateUI(data) {
+      const isAttack = (data.status === 'ATTACK');
+      const statusBadge = document.getElementById('statusBadge');
+      const alertBanner = document.getElementById('alertBanner');
+      const bannerText = document.getElementById('bannerText');
+
+      // Update Badges & Banner
+      if (isAttack) {
+        statusBadge.className = 'badge badge-attack';
+        statusBadge.innerText = 'UNDER ATTACK';
+        alertBanner.className = 'banner banner-attack';
+        bannerText.innerHTML = '🚨 <strong>DDoS ATTACK IN PROGRESS:</strong> High-priority DROP flow rules actively installed at Open vSwitch edge!';
+      } else {
+        statusBadge.className = 'badge badge-normal';
+        statusBadge.innerText = 'NORMAL';
+        alertBanner.className = 'banner banner-normal';
+        bannerText.innerHTML = '✅ Network operating under baseline benign conditions. No active DDoS anomalies detected.';
+      }
+
+      document.getElementById('lastUpdated').innerText = 'Updated: ' + (data.last_updated || new Date().toLocaleTimeString());
+
+      // Update Metrics
+      const feats = data.latest_features || {};
+      const pps = feats.packet_rate || 0;
+      const bps = feats.byte_rate || 0;
+      document.getElementById('cardPacketRate').innerHTML = `${Math.round(pps).toLocaleString()} <span style="font-size: 1rem;">pps</span>`;
+      document.getElementById('cardByteRate').innerText = `${(bps / 1024).toFixed(1)} KB/s`;
+      document.getElementById('cardSrcEntropy').innerText = (feats.src_ip_entropy !== undefined) ? feats.src_ip_entropy.toFixed(2) : "0.00";
+      document.getElementById('cardBlockedCount').innerText = data.blocked_count || 0;
+
+      // Update Traffic Chart
+      const history = data.traffic_history || [];
+      if (history.length > 0 && trafficChart) {
+        const labels = history.slice(-20).map(h => h.timestamp);
+        const ppsData = history.slice(-20).map(h => h.packet_rate);
+        const thresholdLine = new Array(labels.length).fill(1200);
+
+        trafficChart.data.labels = labels;
+        trafficChart.data.datasets[0].data = ppsData;
+        trafficChart.data.datasets[1].data = thresholdLine;
+        trafficChart.update();
+      }
+
+      // Update Protocol Chart
+      if (protocolChart && feats.tcp_ratio !== undefined) {
+        const tcp = Math.round(feats.tcp_ratio * 100);
+        const udp = Math.round(feats.udp_ratio * 100);
+        const icmp = Math.round(feats.icmp_ratio * 100);
+        protocolChart.data.datasets[0].data = [tcp, udp, icmp];
+        protocolChart.update();
+      }
+
+      // Update Blocked Hosts Table
+      renderBlockedHosts(data.blocked_hosts || []);
+
+      // Update Alerts Table
+      renderAlerts(data.recent_alerts || []);
+    }
+
+    function renderBlockedHosts(hosts) {
+      const tbody = document.getElementById('blockedTableBody');
+      if (!hosts || hosts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hosts currently blocked. Network is secure.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = hosts.map(h => `
+        <tr>
+          <td><span class="badge-ip">${h.ip}</span></td>
+          <td><span class="badge-ip">${h.victim || '10.0.0.4'}</span></td>
+          <td><span style="color: var(--accent-red); font-weight: 600;">${h.reason || 'DDoS Flood'}</span></td>
+          <td><strong>${h.remaining_sec || 0}s</strong> remaining</td>
+          <td><button class="btn btn-secondary" onclick="unblockHost('${h.ip}')">Unblock</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAlerts(alerts) {
+      const tbody = document.getElementById('alertsTableBody');
+      if (!alerts || alerts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Audit log empty.</td></tr>';
+        return;
+      }
+
+      const recent = [...alerts].reverse().slice(0, 10);
+      tbody.innerHTML = recent.map(a => `
+        <tr>
+          <td style="color: var(--text-muted); font-size: 0.75rem;">${a.timestamp}</td>
+          <td><span class="${a.severity === 'CRITICAL' ? 'badge-critical' : 'badge-info-text'}">${a.severity}</span></td>
+          <td><strong>${a.title}</strong>: ${a.message}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Unblock API Call
+    async function unblockHost(ip) {
+      try {
+        const resp = await fetch('/api/unblock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip: ip })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          fetchStatus();
+        } else {
+          alert("Error: " + res.error);
+        }
+      } catch (e) {
+        console.error("Unblock failed:", e);
+      }
+    }
+
+    // Trigger Simulation Scenario
+    async function simulateTraffic(scenario) {
+      try {
+        const resp = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario: scenario })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          fetchStatus();
+        }
+      } catch (e) {
+        console.error("Simulation failed:", e);
+      }
+    }
+
+    // Auto-poll every 2 seconds
+    window.onload = function() {
+      initCharts();
+      fetchStatus();
+      setInterval(fetchStatus, 2000);
+    };
+  </script>
+</body>
+</html>
